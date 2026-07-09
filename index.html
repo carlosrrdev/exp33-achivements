@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Expedition 33 — Achievement Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#131019;
+    --canvas:#1d1926;
+    --card:#241f30;
+    --card-edge:#332c42;
+    --parchment:#eae1cd;
+    --parchment-dim:#a89f8e;
+    --gold:#c9a45c;
+    --gold-bright:#e8c987;
+    --paint:#8e3b46;
+    --muted:#6f6782;
+    --bronze:#b07a4a;
+    --silver:#b9c0cc;
+    --plat:#9fd8e0;
+    --radius:14px;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html{scroll-behavior:smooth}
+  body{
+    background:var(--ink);
+    background-image:radial-gradient(ellipse 120% 60% at 50% -10%, #241d33 0%, var(--ink) 60%);
+    color:var(--parchment);
+    font-family:'Jost',system-ui,sans-serif;
+    font-weight:300;
+    min-height:100vh;
+    padding-bottom:env(safe-area-inset-bottom);
+  }
+  .wrap{max-width:640px;margin:0 auto;padding:0 16px 96px}
+
+  /* ---------- Header / Monolith counter ---------- */
+  header{padding:28px 0 8px;text-align:center;position:relative}
+  .eyebrow{
+    font-size:11px;letter-spacing:.32em;text-transform:uppercase;
+    color:var(--gold);font-weight:500;
+  }
+  h1{
+    font-family:'Cormorant Garamond',serif;font-weight:600;
+    font-size:clamp(28px,7vw,40px);line-height:1.1;margin-top:6px;
+  }
+  h1 em{font-style:italic;color:var(--gold-bright)}
+
+  .monolith{
+    margin:20px auto 6px;position:relative;width:180px;height:180px;
+    display:flex;align-items:center;justify-content:center;
+  }
+  .monolith svg{position:absolute;inset:0;width:100%;height:100%}
+  .monolith .num{
+    font-family:'Cormorant Garamond',serif;font-weight:700;
+    font-size:88px;line-height:1;color:var(--paint);
+    text-shadow:0 0 28px rgba(142,59,70,.55);
+    position:relative;z-index:1;
+    transition:transform .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  .monolith .num.bump{transform:scale(1.12)}
+  .monolith .num.done{color:var(--gold-bright);text-shadow:0 0 32px rgba(232,201,135,.5);font-size:64px}
+  .monolith-caption{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+
+  .brush{width:min(340px,86%);margin:18px auto 0;height:12px;position:relative}
+  .brush-track{
+    position:absolute;inset:0;border-radius:8px;background:#2a2437;
+    clip-path:polygon(0 35%,3% 10%,97% 0,100% 45%,98% 90%,2% 100%);
+  }
+  .brush-fill{
+    position:absolute;top:0;left:0;bottom:0;border-radius:8px;
+    background:linear-gradient(90deg,var(--paint),var(--gold) 85%,var(--gold-bright));
+    clip-path:polygon(0 35%,3% 10%,97% 0,100% 45%,98% 90%,2% 100%);
+    width:0%;transition:width .5s ease;
+  }
+  .tally{margin-top:8px;font-size:13px;color:var(--parchment-dim);letter-spacing:.04em}
+  .tally b{color:var(--gold);font-weight:500}
+
+  /* ---------- Controls ---------- */
+  .controls{
+    position:sticky;top:0;z-index:20;
+    background:linear-gradient(var(--ink) 78%,transparent);
+    padding:12px 0 16px;margin-top:14px;
+  }
+  .search{
+    width:100%;padding:12px 16px;border-radius:var(--radius);
+    background:var(--card);border:1px solid var(--card-edge);
+    color:var(--parchment);font-family:inherit;font-size:16px;font-weight:300;
+    outline:none;transition:border-color .2s;
+  }
+  .search::placeholder{color:var(--muted)}
+  .search:focus{border-color:var(--gold)}
+  .chips{
+    display:flex;gap:8px;overflow-x:auto;padding:12px 2px 4px;
+    scrollbar-width:none;-ms-overflow-style:none;
+  }
+  .chips::-webkit-scrollbar{display:none}
+  .chip{
+    flex:0 0 auto;padding:7px 14px;border-radius:999px;font-size:13px;
+    font-family:inherit;font-weight:400;letter-spacing:.03em;cursor:pointer;
+    background:var(--card);color:var(--parchment-dim);
+    border:1px solid var(--card-edge);transition:all .15s;
+  }
+  .chip.active{background:var(--gold);color:var(--ink);border-color:var(--gold);font-weight:500}
+  .chip:focus-visible{outline:2px solid var(--gold-bright);outline-offset:2px}
+
+  .toggle-row{
+    display:flex;align-items:center;justify-content:space-between;
+    padding:8px 2px 0;font-size:13px;color:var(--parchment-dim);
+  }
+  .toggle-row label{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}
+  .switch{
+    position:relative;width:38px;height:22px;border-radius:999px;
+    background:#332c42;transition:background .2s;flex:0 0 auto;
+  }
+  .switch::after{
+    content:'';position:absolute;top:3px;left:3px;width:16px;height:16px;
+    border-radius:50%;background:var(--parchment-dim);transition:all .2s;
+  }
+  input#showDone{position:absolute;opacity:0;width:0;height:0}
+  input#showDone:checked + label .switch{background:var(--gold)}
+  input#showDone:checked + label .switch::after{left:19px;background:var(--ink)}
+  input#showDone:focus-visible + label .switch{outline:2px solid var(--gold-bright);outline-offset:2px}
+
+  /* ---------- Sections & cards ---------- */
+  .section{margin-top:26px}
+  .section-head{
+    display:flex;align-items:baseline;gap:10px;margin-bottom:12px;
+    border-bottom:1px solid var(--card-edge);padding-bottom:8px;
+  }
+  .section-head h2{
+    font-family:'Cormorant Garamond',serif;font-weight:600;font-style:italic;
+    font-size:22px;color:var(--gold-bright);
+  }
+  .section-head .count{font-size:12px;color:var(--muted);letter-spacing:.1em}
+
+  ul{list-style:none;display:flex;flex-direction:column;gap:10px}
+
+  .ach{
+    display:flex;align-items:flex-start;gap:14px;
+    background:var(--card);border:1px solid var(--card-edge);
+    border-radius:var(--radius);padding:14px;cursor:pointer;
+    transition:border-color .2s, opacity .35s, transform .35s;
+    overflow:hidden;
+  }
+  .ach:active{transform:scale(.985)}
+  .ach:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .ach.leaving{opacity:0;transform:translateX(24px)}
+
+  .check{
+    flex:0 0 auto;width:26px;height:26px;margin-top:2px;border-radius:50%;
+    border:1.5px solid var(--muted);display:flex;align-items:center;justify-content:center;
+    transition:all .2s;
+  }
+  .check svg{width:14px;height:14px;opacity:0;transform:scale(.5);transition:all .2s}
+  .ach.done .check{background:var(--gold);border-color:var(--gold)}
+  .ach.done .check svg{opacity:1;transform:scale(1)}
+
+  .ach-body{flex:1;min-width:0}
+  .ach-title{
+    font-family:'Cormorant Garamond',serif;font-weight:600;font-size:19px;
+    line-height:1.2;color:var(--parchment);
+  }
+  .ach.done .ach-title{color:var(--parchment-dim);text-decoration:line-through;text-decoration-color:var(--gold);text-decoration-thickness:1px}
+  .ach-desc{font-size:14px;color:var(--parchment-dim);margin-top:3px;line-height:1.45}
+  .ach-meta{display:flex;align-items:center;gap:10px;margin-top:8px;font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+  .tier{display:inline-flex;align-items:center;gap:5px}
+  .tier::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--tc,var(--bronze));box-shadow:0 0 6px var(--tc,var(--bronze))}
+  .tier.bronze{--tc:var(--bronze)} .tier.silver{--tc:var(--silver)}
+  .tier.gold{--tc:var(--gold-bright)} .tier.platinum{--tc:var(--plat)}
+  .ps-only{color:var(--plat)}
+
+  .empty{
+    text-align:center;padding:48px 20px;color:var(--muted);
+    font-family:'Cormorant Garamond',serif;font-style:italic;font-size:20px;
+  }
+  .empty .flower{font-size:28px;display:block;margin-bottom:10px;filter:grayscale(.3)}
+
+  footer{
+    margin-top:48px;text-align:center;font-size:12px;color:var(--muted);
+    display:flex;flex-direction:column;gap:14px;align-items:center;
+  }
+  .reset{
+    background:none;border:1px solid var(--card-edge);color:var(--parchment-dim);
+    padding:9px 18px;border-radius:999px;font-family:inherit;font-size:13px;cursor:pointer;
+    transition:all .2s;
+  }
+  .reset:hover{border-color:var(--paint);color:var(--paint)}
+
+  .saving{
+    position:fixed;bottom:16px;left:50%;transform:translate(-50%,60px);
+    background:var(--card);border:1px solid var(--card-edge);color:var(--parchment-dim);
+    font-size:12.5px;padding:8px 16px;border-radius:999px;transition:transform .3s;
+    pointer-events:none;z-index:50;
+  }
+  .saving.show{transform:translate(-50%,0)}
+
+  @media (min-width:560px){
+    .ach:hover{border-color:var(--gold)}
+  }
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none!important;animation:none!important}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="eyebrow">Clair Obscur</div>
+    <h1>Expedition <em>33</em> — Achievement Journal</h1>
+
+    <div class="monolith" aria-hidden="true">
+      <svg viewBox="0 0 180 180">
+        <defs>
+          <radialGradient id="glow" cx="50%" cy="50%" r="55%">
+            <stop offset="0%" stop-color="#2b2238"/>
+            <stop offset="100%" stop-color="transparent"/>
+          </radialGradient>
+        </defs>
+        <circle cx="90" cy="90" r="86" fill="url(#glow)"/>
+        <circle cx="90" cy="90" r="74" fill="none" stroke="#332c42" stroke-width="1.5"/>
+        <circle id="ring" cx="90" cy="90" r="74" fill="none" stroke="#c9a45c" stroke-width="2.5"
+          stroke-linecap="round" stroke-dasharray="465" stroke-dashoffset="465"
+          transform="rotate(-90 90 90)" style="transition:stroke-dashoffset .5s ease"/>
+      </svg>
+      <div class="num" id="remaining">56</div>
+    </div>
+    <div class="monolith-caption" id="monoCaption">remaining</div>
+
+    <div class="brush">
+      <div class="brush-track"></div>
+      <div class="brush-fill" id="brushFill"></div>
+    </div>
+    <div class="tally" id="tally"><b>0</b> of 56 painted · 0 G</div>
+  </header>
+
+  <div class="controls">
+    <input type="search" class="search" id="search" placeholder="Search achievements…" aria-label="Search achievements">
+    <div class="chips" id="chips" role="tablist" aria-label="Filter by category"></div>
+    <div class="toggle-row">
+      <input type="checkbox" id="showDone">
+      <label for="showDone"><span class="switch" aria-hidden="true"></span><span id="showDoneLabel">Show completed (0)</span></label>
+    </div>
+  </div>
+
+  <main id="list" aria-live="polite"></main>
+
+  <footer>
+    <button class="reset" id="resetBtn">Reset all progress</button>
+    <div>For those who come after. · Fan-made tracker, not affiliated with Sandfall Interactive.</div>
+  </footer>
+</div>
+
+<div class="saving" id="toast">Progress saved</div>
+
+<script>
+/* ============ Data — 55 achievements + PS platinum ============ */
+const ACHIEVEMENTS = [
+  // Story
+  {id:"lumiere",   name:"Lumière",          desc:"Embark on the Expedition.",                       tier:"bronze", gs:10, cat:"Story"},
+  {id:"exp33",     name:"Expedition 33",    desc:"Unlock all playable characters.",                 tier:"bronze", gs:10, cat:"Story"},
+  {id:"legend",    name:"Legend",           desc:"Unlock Esquie.",                                  tier:"bronze", gs:10, cat:"Story"},
+  {id:"axon1",     name:"First Axon",       desc:"Defeat the first Axon.",                          tier:"bronze", gs:15, cat:"Story"},
+  {id:"axon2",     name:"Second Axon",      desc:"Defeat the second Axon.",                         tier:"bronze", gs:25, cat:"Story"},
+  {id:"monolith",  name:"Monolith",         desc:"Reach the Monolith.",                             tier:"bronze", gs:25, cat:"Story"},
+  {id:"paintress", name:"Paintress",        desc:"Defeat the Paintress.",                           tier:"silver", gs:50, cat:"Story"},
+  {id:"backlum",   name:"Back to Lumière",  desc:"Return to Lumière.",                              tier:"bronze", gs:50, cat:"Story"},
+  {id:"theend",    name:"The End",          desc:"Reach the end.",                                  tier:"gold",   gs:50, cat:"Story"},
+
+  // Exploration
+  {id:"spring",    name:"Spring Meadows",        desc:"Find your way through Spring Meadows.",        tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"flying",    name:"Flying Waters",         desc:"Find your way through Flying Waters.",         tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"ancient",   name:"Ancient Sanctuary",     desc:"Find your way through Ancient Sanctuary.",     tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"gvillage",  name:"Gestral Village",       desc:"Find your way through the Gestral Village.",   tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"nest",      name:"Esquie's Nest",         desc:"Find your way through Esquie's Nest.",         tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"cliffs",    name:"Stone Wave Cliffs",     desc:"Find your way through Stone Wave Cliffs.",     tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"battlefield",name:"Forgotten Battlefield",desc:"Find your way through Forgotten Battlefield.", tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"station",   name:"Monoco's Station",      desc:"Find your way through Monoco's Station.",      tier:"bronze", gs:10, cat:"Exploration"},
+  {id:"oldlum",    name:"Old Lumière",           desc:"Find your way through Old Lumière.",           tier:"bronze", gs:10, cat:"Exploration"},
+
+  // Combat
+  {id:"overcharge",name:"Overcharge",            desc:"With Gustave, use a fully charged Overcharge that Breaks an enemy.", tier:"bronze", gs:10, cat:"Combat"},
+  {id:"ink",       name:"Time to Spill Some Ink",desc:"Break an enemy.",                              tier:"bronze", gs:10, cat:"Combat"},
+  {id:"cage",      name:"Paint Cage",            desc:"Break a Paint Cage.",                          tier:"bronze", gs:10, cat:"Combat"},
+  {id:"chroma",    name:"Chroma Proficiency",    desc:"Use a level 3 Gradient Attack.",               tier:"bronze", gs:10, cat:"Combat"},
+  {id:"pro",       name:"Professional",          desc:"Defeat a boss without taking any damage.",     tier:"bronze", gs:10, cat:"Combat"},
+  {id:"maxi",      name:"Maximisation",          desc:"With Sciel, consume 20 Foretell on a single target during Twilight.", tier:"bronze", gs:10, cat:"Combat"},
+  {id:"flow",      name:"Perfect Flow",          desc:"With Lune, consume Stains 4 turns in a row.",  tier:"bronze", gs:10, cat:"Combat"},
+  {id:"perfection",name:"Perfection",            desc:"With Verso, reach Rank S.",                    tier:"bronze", gs:10, cat:"Combat"},
+  {id:"synergy",   name:"Synergy",               desc:"With Maelle, use Percée on a Marked enemy while in Virtuose Stance.", tier:"bronze", gs:10, cat:"Combat"},
+  {id:"wheel",     name:"Wheel Control",         desc:"With Monoco, cast an Upgraded Skill 4 turns in a row.", tier:"bronze", gs:10, cat:"Combat"},
+
+  // Optional bosses & challenges
+  {id:"aon",       name:"À On",                  desc:"Beat the Serpenphare.",                        tier:"bronze", gs:10, cat:"Bosses & Challenges"},
+  {id:"mime",      name:"A Peculiar Encounter",  desc:"Defeat the Mime in Lumière.",                  tier:"bronze", gs:10, cat:"Bosses & Challenges"},
+  {id:"clea",      name:"Clea",                  desc:"Beat Clea.",                                   tier:"silver", gs:25, cat:"Bosses & Challenges"},
+  {id:"endless",   name:"Endless",               desc:"Reach the top of the Endless Tower.",          tier:"silver", gs:50, cat:"Bosses & Challenges"},
+  {id:"simon",     name:"Peace At Last",         desc:"Beat Simon.",                                  tier:"gold",   gs:50, cat:"Bosses & Challenges"},
+  {id:"sprong",    name:"Sprong",                desc:"Beat Sprong.",                                 tier:"bronze", gs:10, cat:"Bosses & Challenges"},
+  {id:"petank",    name:"Carreau Parfait",       desc:"Beat the Chromatic Pétank.",                   tier:"bronze", gs:10, cat:"Bosses & Challenges"},
+  {id:"noir",      name:"Noir et Blanc",         desc:"Solve the Painting Workshop's mystery.",       tier:"silver", gs:50, cat:"Bosses & Challenges"},
+
+  // Collectibles & quests
+  {id:"records",   name:"Connoisseur",           desc:"Find all 33 music records.",                   tier:"bronze", gs:50, cat:"Collectibles & Quests"},
+  {id:"journals",  name:"Follow The Trail",      desc:"Find all of the journals from prior expeditions.", tier:"bronze", gs:10, cat:"Collectibles & Quests"},
+  {id:"gestrals",  name:"Lost Gestrals",         desc:"Find all of the Lost Gestrals.",               tier:"bronze", gs:10, cat:"Collectibles & Quests"},
+  {id:"nevron",    name:"Aiding the Enemy",      desc:"Finish all of the Nevron quests.",             tier:"bronze", gs:25, cat:"Collectibles & Quests"},
+  {id:"games",     name:"Gestral Games",         desc:"Win all of the Gestral games.",                tier:"bronze", gs:10, cat:"Collectibles & Quests"},
+  {id:"curious",   name:"Curious",               desc:"Witness an optional scene at camp.",           tier:"bronze", gs:10, cat:"Collectibles & Quests"},
+  {id:"esqabil",   name:"Plane, Train, and Submarine", desc:"Discover all of Esquie's abilities.",    tier:"bronze", gs:10, cat:"Collectibles & Quests"},
+  {id:"feet",      name:"Feet Collection",       desc:"Acquire all of Monoco's skills.",              tier:"silver", gs:50, cat:"Collectibles & Quests"},
+
+  // Progression
+  {id:"lv33",      name:"Expeditioner",          desc:"Reach level 33.",                              tier:"bronze", gs:10, cat:"Progression"},
+  {id:"lv66",      name:"Trailbreaker",          desc:"Reach level 66.",                              tier:"bronze", gs:25, cat:"Progression"},
+  {id:"lv99",      name:"Survivor",              desc:"Reach level 99.",                              tier:"bronze", gs:50, cat:"Progression"},
+  {id:"lumina",    name:"Lumina",                desc:"Consume a Lumina point.",                      tier:"bronze", gs:10, cat:"Progression"},
+  {id:"wpn1",      name:"Weapon Upgrade",        desc:"Upgrade a weapon once.",                       tier:"bronze", gs:10, cat:"Progression"},
+  {id:"wpnmax",    name:"Weapon Mastery",        desc:"Fully upgrade a weapon.",                      tier:"bronze", gs:10, cat:"Progression"},
+
+  // Relationships
+  {id:"rel-esquie",name:"Esquie",  desc:"Reach relationship level 7 with Esquie.",  tier:"bronze", gs:10, cat:"Relationships"},
+  {id:"rel-lune",  name:"Lune",    desc:"Reach relationship level 7 with Lune.",    tier:"bronze", gs:10, cat:"Relationships"},
+  {id:"rel-maelle",name:"Maelle",  desc:"Reach relationship level 7 with Maelle.",  tier:"bronze", gs:10, cat:"Relationships"},
+  {id:"rel-monoco",name:"Monoco",  desc:"Reach relationship level 7 with Monoco.",  tier:"bronze", gs:10, cat:"Relationships"},
+  {id:"rel-sciel", name:"Sciel",   desc:"Reach relationship level 7 with Sciel.",   tier:"bronze", gs:10, cat:"Relationships"},
+
+  // Platinum
+  {id:"platinum",  name:"The Greatest Expedition in History", desc:"Obtain all trophies.", tier:"platinum", gs:0, cat:"Platinum", psOnly:true},
+];
+
+const CATEGORIES = ["All","Story","Exploration","Combat","Bosses & Challenges","Collectibles & Quests","Progression","Relationships","Platinum"];
+const TOTAL = ACHIEVEMENTS.length;
+const STORE_KEY = "e33-tracker-state";
+
+/* ============ Persistence: claude.ai artifact storage with localStorage fallback ============ */
+const store = {
+  async load(){
+    if (typeof window.storage !== "undefined" && window.storage){
+      try{ const r = await window.storage.get(STORE_KEY); return r ? JSON.parse(r.value) : null; }
+      catch(e){ return null; } // key doesn't exist yet
+    }
+    try{ const v = localStorage.getItem(STORE_KEY); return v ? JSON.parse(v) : null; }
+    catch(e){ return null; }
+  },
+  async save(state){
+    const payload = JSON.stringify(state);
+    if (typeof window.storage !== "undefined" && window.storage){
+      try{ await window.storage.set(STORE_KEY, payload); return true; }
+      catch(e){ console.error("storage.set failed", e); return false; }
+    }
+    try{ localStorage.setItem(STORE_KEY, payload); return true; }
+    catch(e){ console.error("localStorage failed", e); return false; }
+  },
+  async clear(){
+    if (typeof window.storage !== "undefined" && window.storage){
+      try{ await window.storage.delete(STORE_KEY); }catch(e){}
+      return;
+    }
+    try{ localStorage.removeItem(STORE_KEY); }catch(e){}
+  }
+};
+
+/* ============ State ============ */
+let completed = new Set();
+let filter = "All";
+let query = "";
+let showDone = false;
+
+const $ = s => document.querySelector(s);
+const listEl = $("#list");
+let saveTimer = null, toastTimer = null;
+
+function scheduleSave(){
+  clearTimeout(saveTimer);
+  saveTimer = setTimeout(async ()=>{
+    const ok = await store.save({completed:[...completed]});
+    if (ok) toast("Progress saved");
+  }, 400);
+}
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"), 1400);
+}
+
+/* ============ Rendering ============ */
+function tierLabel(t){ return t.charAt(0).toUpperCase()+t.slice(1); }
+
+function updateHeader(){
+  const done = completed.size;
+  const remaining = TOTAL - done;
+  const numEl = $("#remaining");
+  numEl.classList.remove("bump"); void numEl.offsetWidth; numEl.classList.add("bump");
+  if (remaining === 0){
+    numEl.textContent = "fin"; numEl.classList.add("done");
+    $("#monoCaption").textContent = "the canvas is complete";
+  } else {
+    numEl.textContent = remaining; numEl.classList.remove("done");
+    $("#monoCaption").textContent = "remaining";
+  }
+  const pct = done / TOTAL;
+  $("#brushFill").style.width = (pct*100).toFixed(1) + "%";
+  $("#ring").style.strokeDashoffset = 465 * (1 - pct);
+  const gs = ACHIEVEMENTS.filter(a=>completed.has(a.id)).reduce((s,a)=>s+a.gs,0);
+  $("#tally").innerHTML = `<b>${done}</b> of ${TOTAL} painted · ${gs} G`;
+  $("#showDoneLabel").textContent = `Show completed (${done})`;
+}
+
+function matches(a){
+  if (filter !== "All" && a.cat !== filter) return false;
+  if (query && !(a.name.toLowerCase().includes(query) || a.desc.toLowerCase().includes(query))) return false;
+  if (!showDone && completed.has(a.id)) return false;
+  return true;
+}
+
+function render(){
+  updateHeader();
+  const cats = filter === "All" ? CATEGORIES.slice(1) : [filter];
+  let html = "";
+  let anyShown = false;
+
+  for (const cat of cats){
+    const items = ACHIEVEMENTS.filter(a => a.cat === cat && matches(a));
+    if (!items.length) continue;
+    anyShown = true;
+    const catTotal = ACHIEVEMENTS.filter(a=>a.cat===cat).length;
+    const catDone  = ACHIEVEMENTS.filter(a=>a.cat===cat && completed.has(a.id)).length;
+    html += `<section class="section">
+      <div class="section-head"><h2>${cat}</h2><span class="count">${catDone} / ${catTotal}</span></div>
+      <ul>`;
+    for (const a of items){
+      const isDone = completed.has(a.id);
+      html += `<li class="ach ${isDone?"done":""}" data-id="${a.id}" tabindex="0" role="checkbox" aria-checked="${isDone}" aria-label="${a.name}. ${a.desc}">
+        <span class="check" aria-hidden="true">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M2.5 8.5l3.5 3.5 7-8" stroke="#131019" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <div class="ach-body">
+          <div class="ach-title">${a.name}</div>
+          <div class="ach-desc">${a.desc}</div>
+          <div class="ach-meta">
+            <span class="tier ${a.tier}">${tierLabel(a.tier)}</span>
+            ${a.gs ? `<span>${a.gs} G</span>` : ""}
+            ${a.psOnly ? `<span class="ps-only">PlayStation only</span>` : ""}
+          </div>
+        </div>
+      </li>`;
+    }
+    html += `</ul></section>`;
+  }
+
+  if (!anyShown){
+    const allDone = completed.size === TOTAL;
+    html = `<div class="empty"><span class="flower">🌸</span>${
+      allDone && !query && filter==="All"
+        ? "Every achievement painted. For those who come after."
+        : (query ? "Nothing matches your search." : "Everything here is complete — flip “Show completed” to review.")
+    }</div>`;
+  }
+  listEl.innerHTML = html;
+}
+
+/* ============ Interaction ============ */
+function toggle(id, el){
+  const nowDone = !completed.has(id);
+  if (nowDone) completed.add(id); else completed.delete(id);
+  scheduleSave();
+
+  // If it just got completed and completed items are hidden, animate it out
+  if (nowDone && !showDone && el){
+    el.classList.add("done","leaving");
+    el.setAttribute("aria-checked","true");
+    updateHeader();
+    setTimeout(render, 320);
+  } else {
+    render();
+  }
+}
+
+listEl.addEventListener("click", e=>{
+  const li = e.target.closest(".ach");
+  if (li) toggle(li.dataset.id, li);
+});
+listEl.addEventListener("keydown", e=>{
+  if (e.key === " " || e.key === "Enter"){
+    const li = e.target.closest(".ach");
+    if (li){ e.preventDefault(); toggle(li.dataset.id, li); }
+  }
+});
+
+$("#search").addEventListener("input", e=>{
+  query = e.target.value.trim().toLowerCase();
+  render();
+});
+$("#showDone").addEventListener("change", e=>{
+  showDone = e.target.checked;
+  render();
+});
+$("#resetBtn").addEventListener("click", async ()=>{
+  if (!completed.size) return;
+  if (!confirm("Reset all progress? This clears every completed achievement.")) return;
+  completed.clear();
+  await store.clear();
+  render();
+  toast("Progress reset");
+});
+
+/* chips */
+const chipsEl = $("#chips");
+chipsEl.innerHTML = CATEGORIES.map(c =>
+  `<button class="chip ${c==="All"?"active":""}" data-cat="${c}">${c}</button>`).join("");
+chipsEl.addEventListener("click", e=>{
+  const btn = e.target.closest(".chip");
+  if (!btn) return;
+  filter = btn.dataset.cat;
+  chipsEl.querySelectorAll(".chip").forEach(c=>c.classList.toggle("active", c===btn));
+  render();
+});
+
+/* ============ Init ============ */
+(async function init(){
+  const saved = await store.load();
+  if (saved && Array.isArray(saved.completed)){
+    completed = new Set(saved.completed.filter(id => ACHIEVEMENTS.some(a=>a.id===id)));
+  }
+  render();
+})();
+</script>
+</body>
+</html>
